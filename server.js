@@ -8,7 +8,6 @@ const port = process.env.PORT || 1111;
 
 app.use(express.json());
 
-await connectDB()
 
 app.use('/static', express.static('uploads'));
 
@@ -17,7 +16,7 @@ app.use((req, res, next) => {
   console.log({
     method: req.method,
     url: req.url,
-    body:req.body
+    body: req.body
   });
 
   next();
@@ -27,7 +26,12 @@ app.use((req, res, next) => {
 app.use('/api', apiRouter);
 
 
+async function start() {
+  
+  await connectDB()
 
-app.listen(port, () => {
-  console.log(`Server running on port : http://localhost:${port}`);
-});
+  app.listen(port, () => {
+    console.log(`Server running on port : http://localhost:${port}`);
+  });
+}
+start();

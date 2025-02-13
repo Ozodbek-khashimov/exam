@@ -1,37 +1,39 @@
-import bcrypt from 'bcrypt';
 import { User } from '../models/User.js';
 import { OTP } from '../models/OTP.js';
+import jwt from "jsonwebtoken"
 // import { generateToken } from '../utils/generateToken.js';
-import { sendEmail } from '../utils/sendEmail.js';  
+import { sendEmalOtp } from '../utils/sendEmail.js';
 
 export const usercontroller = {
-    // Regiter funksiyasining o'zgartirilgan versiyasi:
-    async register(req, res) {
-      const {firstName,lastName, username, email, password, role = 'user' } = req.body;
-    
-      try {
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-          return res.status(400).json({ error: 'Email already registered' });
-        }
-    
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const user = await User.create({ firstName,lastName, username, email, password: hashedPassword, role });
-    
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        await OTP.create({ userId: user._id, code: otp, expiresAt: Date.now() + 600000 });
-    
-        // To'g'ri email yuborish
-        await sendEmail.sendMail({ email });
-    
-        res.status(201).json({ message: 'User registered. Check your email for OTP.' });
-      } catch (err) {
-        console.error(err);
-        res.status(400).json({ error: err.message });
+  // Regiter funksiyasining o'zgartirilgan versiyasi:
+  async register(req, res) {
+    const { firstName, lastName, username, email, password, role = 'user' } = req.body;
+
+    try {
+      const existingUser = await User.findOne({ email });
+
+      if (existingUser) {
+        return res.status(400).json({ error: 'Email already registered' });
       }
-    },
-    
-    
+
+      const user = await User.create({ firstName, lastName, username, email, password, role });
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      await OTP.create({ userId: user._id, code: otp, expiresAt: Date.now() + 600000 });
+
+      // To'g'ri email yuborish
+      console.log(email, otp);
+
+      await sendEmalOtp.sendMailActivationCode(email, otp);
+
+      res.status(201).json({ message: 'User registered. Check your email for OTP.' });
+    } catch (err) {
+      console.error(err);
+      res.status(400).json({ error: err.message });
+    }
+  },
+
+
   async verifyOTP(req, res) {
     const { email, code } = req.body;
     try {
@@ -53,59 +55,65 @@ export const usercontroller = {
 
   async login(req, res, next) {
     try {
-        const { username, password } = req.body;
+      const { username, password } = req.body;
 
-        if (!username || !password) {
-            throw new Error("Username and password are required");
-        }
+      if (!username || !password) {
+        throw new Error("Username and password are required");
+      }
 
-        const user = await User.findOne({ username });
+      const user = await User.findOne({ username });
 
-        if (!user) {
-            throw new Error("User not found");
-        }
+      if (!user) {
+        throw new Error("User not found");
+      }
 
-        const isMatch = await user.matchPassword(password);
+      const isMatch = await user.matchPassword(password);
 
-        if (!isMatch) {
-            throw new Error("Invalid credentials");
-        }
+      if (!isMatch) {
+        throw new Error("Invalid credentials");
+      }
 
-        const payload = {
-            id: user._id,
-            username: user.username,
-            email: user.email,
-            role: user.role,
-        };
+      const payload = {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+      };
 
-        const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
-            expiresIn: "1h", 
-        });
+      const accessToken = jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
+        expiresIn: "1h",
+      });
 
-        const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
-            expiresIn: "7d", 
-        });
+      const refreshToken = jwt.sign(payload, process.env.JWT_REFRESH_SECRET, {
+        expiresIn: "7d",
+      });
 
-        res.status(200).json({
-            message: "Login successful",
-            user: {
-                username: user.username,
-                email: user.email,
-                role: user.role,
-            },
-            tokens: {
-                accessToken, 
-                refreshToken, 
-            },
-        });
+      return res.status(200).json({
+        message: "Login successful",
+        user: {
+          username: user.username,
+          email: user.email,
+          id:user._id,
+          role: user.role,
+        },
+        tokens: {
+          accessToken,
+          refreshToken,
+        },
+      });
     } catch (error) {
-        next(error);
+      console.log(error);
+      return res.status(400).send({ error: error.message })
     }
-},
+  },
   async getProfile(req, res) {
     try {
-      const profile = await User.findById(req.user._id, { name: 1, email: 1, isVerified: 1 });
-      res.status(200).json(profile);
+
+      const profile = await User.findById(req.params.id);
+      if(!profile){
+        return res.status(400).json({ message: "user not found" });
+      }
+      res.status(200).json({ user: profile });
     } catch (err) {
       res.status(400).json({ error: err.message });
     }

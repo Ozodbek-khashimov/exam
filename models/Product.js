@@ -1,4 +1,6 @@
-import { Schema, model } from "mongoose";
+import { Schema, Types, model } from "mongoose";
+import { Category } from "./Category.js";
+
 
 const productSchema = new Schema(
     {
@@ -13,7 +15,7 @@ const productSchema = new Schema(
             trim: true
         },
         categoryId: {
-            type: Schema.Types.ObjectId,
+            type: Schema.Types.ObjectId,  
             ref: "Category",
             required: true
         },

@@ -17,15 +17,18 @@ export const userLoginSchema = z.object({
 
 
 export const OrderSchema = z.object({
-  userId: z.string().uuid(),
-  shippingAddress: z.string().min(5).max(255),
+  userId: z.string(),
+  shippingAddress: z.string(),
   items: z.array(
     z.object({
-      productId: z.string().uuid(),
-      quantity: z.number().int().positive(),
-      unitPrice: z.number().positive(),
+      productId: z.string(),
+      quantity: z.number().int(),
+      unitPrice: z.number(),
     })
   ),
+  totalAmount: z.number(),  
+  status: z.enum(["pending", "shipped", "delivered"]),  
+  orderDate: z.string().datetime(),  
 });
 
 export const categorySchema = z.object({
@@ -54,7 +57,7 @@ export const reviewSchema = z.object({
 export const productSchema = z.object({
   name: z.string().min(3),
   description: z.string().min(10),
-  categoryId: z.string().uuid(),
+  categoryId: z.string(),
   price: z.number().positive(),
   currency: z.enum(["USD", "EUR", "UZS", "RUB"]),
   stockQuantity: z.number().int().nonnegative(),
